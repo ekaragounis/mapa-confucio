@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Institutos Confucio en América Latina</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/topojson/3.0.2/topojson.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      background: #0f1923;
+      color: #e8e0d8;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 28px;
+      background: rgba(15, 25, 35, 0.95);
+      border-bottom: 1px solid rgba(255,255,255,0.07);
+      flex-shrink: 0;
+    }
+
+    .header-left h1 {
+      font-size: 18px;
+      font-weight: 500;
+      color: #f0e8e0;
+      letter-spacing: 0.01em;
+    }
+
+    .header-left p {
+      font-size: 11px;
+      color: rgba(200,16,46,0.85);
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      margin-top: 3px;
+    }
+
+    .stats {
+      display: flex;
+      gap: 28px;
+      align-items: center;
+    }
+
+    .stat {
+      text-align: center;
+    }
+
+    .stat-n {
+      font-size: 26px;
+      font-weight: 500;
+      line-height: 1;
+      color: #f0e8e0;
+    }
+
+    .stat-n.red { color: #C8102E; }
+
+    .stat-l {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.14em;
+      color: rgba(200,190,180,0.5);
+      margin-top: 3px;
+    }
+
+    .stat-div {
+      width: 1px;
+      height: 32px;
+      background: rgba(255,255,255,0.08);
+    }
+
+    #map-wrap {
+      position: relative;
+      flex: 1;
+      overflow: hidden;
+    }
+
+    svg#map {
+      width: 100%;
+      height: 100%;
+    }
+
+    #tooltip {
+      position: absolute;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.12s ease;
+      background: rgba(12, 20, 30, 0.97);
+      border: 1px solid rgba(200,16,46,0.3);
+      border-radius: 4px;
+      padding: 12px 16px;
+      width: 240px;
+      z-index: 10;
+    }
+
+    .tt-country {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.14em;
+      color: #C8102E;
+      font-weight: 500;
+      margin-bottom: 4px;
+    }
+
+    .tt-uni {
+      font-size: 13px;
+      font-weight: 500;
+      color: #f0e8e0;
+      margin-bottom: 3px;
+      line-height: 1.35;
+    }
+
+    .tt-city {
+      font-size: 12px;
+      color: rgba(200,190,180,0.65);
+    }
+
+    .tt-tipo {
+      font-size: 11px;
+      color: rgba(200,16,46,0.75);
+      margin-top: 5px;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+    }
+
+    footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 28px;
+      background: rgba(15, 25, 35, 0.95);
+      border-top: 1px solid rgba(255,255,255,0.07);
+      flex-shrink: 0;
+    }
+
+    .legend {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      color: rgba(200,190,180,0.55);
+    }
+
+    .legend-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #C8102E;
+      opacity: 0.72;
+      border: 1px solid rgba(255,255,255,0.4);
+      flex-shrink: 0;
+    }
+
+    .hint {
+      font-size: 11px;
+      color: rgba(200,190,180,0.35);
+      letter-spacing: 0.08em;
+    }
+
+    .source {
+      font-size: 10px;
+      color: rgba(200,190,180,0.2);
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="header-left">
+      <h1>Institutos Confucio en América Latina y el Caribe</h1>
+      <p>Presencia educativa china · Red regional activa</p>
+    </div>
+    <div class="stats">
+      <div class="stat">
+        <div class="stat-n">61</div>
+        <div class="stat-l">Sedes totales</div>
+      </div>
+      <div class="stat-div"></div>
+      <div class="stat">
+        <div class="stat-n">27</div>
+        <div class="stat-l">Países</div>
+      </div>
+      <div class="stat-div"></div>
+      <div class="stat">
+        <div class="stat-n red">14</div>
+        <div class="stat-l">Sedes en Brasil</div>
+      </div>
+    </div>
+  </header>
+
+  <div id="map-wrap">
+    <svg id="map"></svg>
+    <div id="tooltip"></div>
+  </div>
+
+  <footer>
+    <div class="legend">
+      <div class="legend-item">
+        <div class="legend-dot"></div>
+        1 círculo = 1 sede (Instituto o Aula Confucio)
+      </div>
+    </div>
+    <div class="hint">Pasá el cursor sobre cada círculo para ver los detalles</div>
+    <div class="source">Fuente: ci.cn</div>
+  </footer>
+
+  <script>
+    const pts = [
+      {t:"Instituto",u:"Universidad de Buenos Aires",c:"Buenos Aires",p:"Argentina",la:-34.598,lo:-58.374},
+      {t:"Instituto",u:"Universidad Nacional de La Plata",c:"La Plata",p:"Argentina",la:-34.921,lo:-57.954},
+      {t:"Instituto",u:"Universidad Nacional de Córdoba",c:"Córdoba",p:"Argentina",la:-31.421,lo:-64.189},
+      {t:"Instituto",u:"Universidad del Congreso",c:"Mendoza",p:"Argentina",la:-32.895,lo:-68.845},
+      {t:"Instituto",u:"Antigua and Barbuda",c:"St. John's",p:"Antigua y Barbuda",la:17.127,lo:-61.847},
+      {t:"Instituto",u:"UWI, Cave Hill Campus",c:"Bridgetown",p:"Barbados",la:13.195,lo:-59.543},
+      {t:"Instituto",u:"University of The Bahamas",c:"Nassau",p:"Bahamas",la:25.048,lo:-77.355},
+      {t:"Instituto",u:"Universidad de Panamá",c:"Ciudad de Panamá",p:"Panamá",la:8.994,lo:-79.519},
+      {t:"Instituto",u:"Univ. Estadual Paulista (UNESP)",c:"São Paulo",p:"Brasil",la:-23.529,lo:-46.828},
+      {t:"Instituto",u:"Universidad de Brasilia",c:"Brasília",p:"Brasil",la:-15.764,lo:-47.872},
+      {t:"Instituto",u:"PUC Río de Janeiro",c:"Río de Janeiro",p:"Brasil",la:-22.976,lo:-43.233},
+      {t:"Instituto",u:"UFRGS",c:"Porto Alegre",p:"Brasil",la:-30.033,lo:-51.219},
+      {t:"Instituto de Negocios",u:"FAAP",c:"São Paulo",p:"Brasil",la:-23.548,lo:-46.528},
+      {t:"Instituto",u:"UFMG",c:"Belo Horizonte",p:"Brasil",la:-19.870,lo:-43.967},
+      {t:"Instituto",u:"Universidad de Pernambuco",c:"Recife",p:"Brasil",la:-8.056,lo:-34.953},
+      {t:"Instituto",u:"UNICAMP",c:"Campinas",p:"Brasil",la:-22.817,lo:-47.071},
+      {t:"Instituto",u:"Univ. Estadual de Pará",c:"Belém",p:"Brasil",la:-1.455,lo:-48.502},
+      {t:"Instituto",u:"UFC",c:"Fortaleza",p:"Brasil",la:-3.748,lo:-38.522},
+      {t:"Instituto de Medicina China",u:"UFG",c:"Goiânia",p:"Brasil",la:-16.686,lo:-49.264},
+      {t:"Instituto",u:"UFBA",c:"Salvador",p:"Brasil",la:-12.971,lo:-38.512},
+      {t:"Instituto",u:"UFRJ",c:"Río de Janeiro",p:"Brasil",la:-22.862,lo:-43.023},
+      {t:"Instituto",u:"UFF",c:"Niterói",p:"Brasil",la:-22.904,lo:-43.378},
+      {t:"Instituto",u:"Universidad de San Simón",c:"Cochabamba",p:"Bolivia",la:-17.393,lo:-66.157},
+      {t:"Instituto",u:"INTEC",c:"Santo Domingo",p:"Rep. Dominicana",la:18.476,lo:-69.910},
+      {t:"Aula",u:"Dominica State College",c:"Roseau",p:"Dominica",la:15.301,lo:-61.388},
+      {t:"Instituto",u:"Univ. San Francisco de Quito (USFQ)",c:"Quito",p:"Ecuador",la:-0.104,lo:-78.478},
+      {t:"Aula",u:"Siyuan Chinese Language Academy",c:"Ecuador",p:"Ecuador",la:-0.55,lo:-78.65},
+      {t:"Aula",u:"Simiao Weihua International School",c:"Guayaquil",p:"Ecuador",la:-2.170,lo:-79.922},
+      {t:"Instituto",u:"Medellín",c:"Medellín",p:"Colombia",la:6.251,lo:-75.564},
+      {t:"Instituto",u:"Universidad de Los Andes",c:"Bogotá",p:"Colombia",la:4.601,lo:-74.065},
+      {t:"Instituto",u:"U. Jorge Tadeo Lozano",c:"Bogotá",p:"Colombia",la:4.655,lo:-74.015},
+      {t:"Aula",u:"Colegio Nueva Granada",c:"Bogotá",p:"Colombia",la:4.720,lo:-74.055},
+      {t:"Instituto",u:"Universidad de Costa Rica",c:"San José",p:"Costa Rica",la:9.937,lo:-84.032},
+      {t:"Instituto",u:"T. A. Marryshow Community College",c:"St. George's",p:"Granada",la:12.056,lo:-61.745},
+      {t:"Instituto",u:"Universidad de La Habana",c:"La Habana",p:"Cuba",la:23.136,lo:-82.381},
+      {t:"Instituto",u:"Universidad de Guyana",c:"Georgetown",p:"Guyana",la:6.801,lo:-58.161},
+      {t:"Aula",u:"Universidad de Quisqueya",c:"Port-au-Prince",p:"Haití",la:18.543,lo:-72.337},
+      {t:"Instituto",u:"UPNFM",c:"Tegucigalpa",p:"Honduras",la:14.083,lo:-87.207},
+      {t:"Instituto",u:"Univ. Católica Santa María",c:"Arequipa",p:"Perú",la:-16.409,lo:-71.537},
+      {t:"Instituto",u:"Universidad de Piura",c:"Piura",p:"Perú",la:-5.194,lo:-80.632},
+      {t:"Instituto",u:"PUCP",c:"Lima",p:"Perú",la:-12.077,lo:-77.180},
+      {t:"Instituto",u:"Universidad Ricardo Palma",c:"Lima",p:"Perú",la:-12.150,lo:-77.004},
+      {t:"Instituto",u:"UANL",c:"Monterrey",p:"México",la:25.727,lo:-100.311},
+      {t:"Instituto",u:"Ciudad de México",c:"CDMX",p:"México",la:19.429,lo:-99.034},
+      {t:"Instituto",u:"UNAM",c:"CDMX",p:"México",la:19.316,lo:-99.283},
+      {t:"Instituto",u:"Univ. Autónoma de Chihuahua",c:"Chihuahua",p:"México",la:28.633,lo:-106.069},
+      {t:"Instituto",u:"UADY",c:"Mérida",p:"México",la:20.968,lo:-89.623},
+      {t:"Universidad de Guadalajara",u:"Universidad de Guadalajara",c:"Guadalajara",p:"México",la:20.659,lo:-103.350},
+      {t:"Instituto",u:"Universidad Veracruzana",c:"Xalapa",p:"México",la:19.526,lo:-96.927},
+      {t:"Instituto",u:"UNAN Managua",c:"Managua",p:"Nicaragua",la:12.132,lo:-86.309},
+      {t:"Instituto",u:"UNAN León",c:"León",p:"Nicaragua",la:12.434,lo:-86.880},
+      {t:"Instituto",u:"Universidad de El Salvador",c:"San Salvador",p:"El Salvador",la:13.700,lo:-89.203},
+      {t:"Instituto",u:"Univ. Anton de Kom",c:"Paramaribo",p:"Surinam",la:5.852,lo:-55.203},
+      {t:"Instituto",u:"UWI, St. Augustine Campus",c:"Trinidad",p:"Trinidad y Tobago",la:10.643,lo:-61.393},
+      {t:"Instituto",u:"Univ. Bolivariana de Venezuela",c:"Caracas",p:"Venezuela",la:10.491,lo:-66.902},
+      {t:"Instituto",u:"Universidad de la República",c:"Montevideo",p:"Uruguay",la:-34.906,lo:-56.189},
+      {t:"Instituto",u:"UWI, Mona Campus",c:"Kingston",p:"Jamaica",la:17.997,lo:-76.746},
+      {t:"Instituto",u:"Universidad Santo Tomás",c:"Santiago",p:"Chile",la:-33.443,lo:-70.852},
+      {t:"Instituto",u:"PUC de Chile",c:"Santiago",p:"Chile",la:-33.440,lo:-70.638},
+      {t:"Instituto",u:"Universidad de La Frontera",c:"Temuco",p:"Chile",la:-38.735,lo:-72.590},
+      {t:"Instituto",u:"Universidad de Magallanes",c:"Punta Arenas",p:"Chile",la:-53.154,lo:-70.912}
+    ];
+
+    const laIds = new Set([32,28,44,52,68,76,84,152,170,188,192,212,214,218,222,308,320,328,332,340,388,484,558,591,600,604,630,740,780,858,862]);
+
+    const wrap = document.getElementById('map-wrap');
+    const svgEl = document.getElementById('map');
+    const tt = document.getElementById('tooltip');
+
+    function getSize() {
+      return { w: wrap.clientWidth, h: wrap.clientHeight };
+    }
+
+    function render() {
+      const { w, h } = getSize();
+      const svg = d3.select('#map');
+      svg.selectAll('*').remove();
+      svg.attr('viewBox', `0 0 ${w} ${h}`);
+
+      svg.append('rect').attr('width', w).attr('height', h).attr('fill', '#1a2e3e');
+
+      const geoBox = {
+        type: 'Feature',
+        geometry: {
+          type: 'MultiPoint',
+          coordinates: [[-116,-56],[-31,30],[-116,30],[-31,-56]]
+        }
+      };
+
+      const proj = d3.geoMercator().fitExtent([[20, 20], [w - 20, h - 20]], geoBox);
+      const pg = d3.geoPath().projection(proj);
+
+      fetch('https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json')
+        .then(r => r.json())
+        .then(world => {
+          const feats = topojson.feature(world, world.objects.countries).features;
+
+          svg.append('g').selectAll('path').data(feats).join('path')
+            .attr('d', pg)
+            .attr('fill', d => laIds.has(+d.id) ? '#2a5068' : '#243830')
+            .attr('stroke', 'rgba(255,255,255,0.12)')
+            .attr('stroke-width', 0.5)
+            .attr('stroke-linejoin', 'round');
+
+          pts.forEach(d => {
+            const pos = proj([d.lo, d.la]);
+            if (!pos) return;
+            const [cx, cy] = pos;
+
+            svg.append('circle').datum(d)
+              .attr('cx', cx).attr('cy', cy).attr('r', 5.5)
+              .attr('fill', '#C8102E').attr('fill-opacity', 0.75)
+              .attr('stroke', 'rgba(255,255,255,0.5)').attr('stroke-width', 0.8)
+              .style('cursor', 'pointer')
+              .on('mouseenter', function (ev, d) {
+                d3.select(this).attr('fill-opacity', 1).attr('r', 7.5);
+                tt.innerHTML = `
+                  <div class="tt-country">${d.p}</div>
+                  <div class="tt-uni">${d.u}</div>
+                  <div class="tt-city">${d.c}</div>
+                  <div class="tt-tipo">${d.t} Confucio</div>
+                `;
+                const rect = wrap.getBoundingClientRect();
+                const mx = ev.clientX - rect.left;
+                const my = ev.clientY - rect.top;
+                const ttW = 244;
+                let lx = mx + 14;
+                if (lx + ttW > w - 10) lx = mx - ttW - 14;
+                tt.style.left = Math.max(6, lx) + 'px';
+                tt.style.top = Math.max(6, my - 50) + 'px';
+                tt.style.opacity = '1';
+              })
+              .on('mousemove', function (ev) {
+                const rect = wrap.getBoundingClientRect();
+                const mx = ev.clientX - rect.left;
+                const my = ev.clientY - rect.top;
+                const ttW = 244;
+                let lx = mx + 14;
+                if (lx + ttW > w - 10) lx = mx - ttW - 14;
+                tt.style.left = Math.max(6, lx) + 'px';
+                tt.style.top = Math.max(6, my - 50) + 'px';
+              })
+              .on('mouseleave', function () {
+                d3.select(this).attr('fill-opacity', 0.75).attr('r', 5.5);
+                tt.style.opacity = '0';
+              });
+          });
+        })
+        .catch(() => {
+          svg.append('text').attr('x', w / 2).attr('y', h / 2)
+            .attr('text-anchor', 'middle').attr('fill', '#aaa').attr('font-size', 14)
+            .text('No se pudo cargar el mapa. Verificá tu conexión a internet.');
+        });
+    }
+
+    render();
+    window.addEventListener('resize', () => { tt.style.opacity = '0'; render(); });
+  </script>
+</body>
+</html>
